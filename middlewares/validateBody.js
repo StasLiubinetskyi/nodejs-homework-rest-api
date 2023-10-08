@@ -1,19 +1,18 @@
 const { contactSchema, updateContactSchema } = require("./validation");
+const Joi = require("joi");
 
 const validateBody = (schema) => {
   return (req, res, next) => {
-    if (req.method === "POST" && req.originalUrl === "/api/contacts") {
-      const { body } = req;
+    const { body } = req;
+    const { error } = schema.validate(body);
 
-      const { error } = schema.validate(body);
-      if (error) {
-        res.status(400).json({ message: "missing required name field" });
-      } else {
-        next();
-      }
-    } else {
-      next();
+    if (error instanceof Joi.ValidationError) {
+      const errorMessage = error.details
+        .map((detail) => detail.message)
+        .join(", ");
+      return res.status(400).json({ message: errorMessage });
     }
+    next();
   };
 };
 
