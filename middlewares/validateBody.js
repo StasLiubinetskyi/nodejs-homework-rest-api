@@ -1,4 +1,4 @@
-const { contactSchema, updateContactSchema } = require("./validation");
+const { contactSchema } = require("./validation");
 const Joi = require("joi");
 
 const validateBody = (schema) => {
@@ -18,5 +18,4 @@ const validateBody = (schema) => {
 
 module.exports = {
   validateContactBody: validateBody(contactSchema),
-  validateUpdateContactBody: validateBody(updateContactSchema),
 };
