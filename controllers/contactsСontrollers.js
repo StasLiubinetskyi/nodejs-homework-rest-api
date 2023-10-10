@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const Contact = require("../models/contactModel");
-const { contactSchema } = require("../middlewares/validation");
+const Contact = require("../models/contactsModel");
+const { contactSchema } = require("../schemas/contactsSchemas");
 
 exports.listContacts = async (req, res, next) => {
   try {
@@ -42,9 +42,15 @@ exports.addContact = async (req, res, next) => {
     phone: "missing required 'phone' field",
   };
   const missingFields = requiredFields.filter((field) => !body[field]);
+
   if (missingFields.length > 0) {
     return res.status(400).json({ message: errorMessages[missingFields[0]] });
   }
+
+  if (body.favorite !== undefined && typeof body.favorite !== "boolean") {
+    return res.status(400).json({ message: "Invalid 'favorite' field" });
+  }
+
   try {
     const newContact = await Contact.create(body);
     res.status(201).json(newContact);
@@ -60,8 +66,7 @@ exports.updateContact = async (req, res, next) => {
   const { error } = contactSchema.validate(body);
 
   if (error) {
-    res.status(400).json({ message: error.details[0].message });
-    return;
+    return res.status(400).json({ message: error.details[0].message });
   }
 
   try {
@@ -100,9 +105,11 @@ exports.removeContact = async (req, res, next) => {
 exports.updateFavoriteStatus = async (req, res, next) => {
   const { id } = req.params;
   const { favorite } = req.body;
+
   if (favorite === undefined) {
     return res.status(400).json({ message: "missing field favorite" });
   }
+
   try {
     const contact = await Contact.findByIdAndUpdate(
       id,

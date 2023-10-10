@@ -1,4 +1,4 @@
-const { contactSchema } = require("./validation");
+const { contactSchema } = require("../schemas/contactsSchemas");
 const Joi = require("joi");
 
 const validateBody = (schema) => {
