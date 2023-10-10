@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
 const Contact = require("../models/contactsModel");
-const { contactSchema } = require("../schemas/contactsSchemas");
+const {
+  contactSchema,
+  updateFavoriteSchema,
+} = require("../schemas/contactsSchemas");
 
 exports.listContacts = async (req, res, next) => {
   try {
     const contacts = await Contact.find();
-
     res.status(200).json(contacts);
   } catch (error) {
     next(error);
@@ -47,8 +49,10 @@ exports.addContact = async (req, res, next) => {
     return res.status(400).json({ message: errorMessages[missingFields[0]] });
   }
 
-  if (body.favorite !== undefined && typeof body.favorite !== "boolean") {
-    return res.status(400).json({ message: "Invalid 'favorite' field" });
+  const { error } = updateFavoriteSchema.validate({ favorite: body.favorite });
+
+  if (error) {
+    return res.status(400).json({ message: "Invalid 'favorite' field type" });
   }
 
   try {
@@ -108,6 +112,12 @@ exports.updateFavoriteStatus = async (req, res, next) => {
 
   if (favorite === undefined) {
     return res.status(400).json({ message: "missing field favorite" });
+  }
+
+  const { error } = updateFavoriteSchema.validate({ favorite });
+
+  if (error) {
+    return res.status(400).json({ message: error.details[0].message });
   }
 
   try {
