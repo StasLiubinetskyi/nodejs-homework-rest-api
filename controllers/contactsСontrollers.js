@@ -49,12 +49,6 @@ exports.addContact = async (req, res, next) => {
     return res.status(400).json({ message: errorMessages[missingFields[0]] });
   }
 
-  const { error } = updateFavoriteSchema.validate({ favorite: body.favorite });
-
-  if (error) {
-    return res.status(400).json({ message: "Invalid 'favorite' field type" });
-  }
-
   try {
     const newContact = await Contact.create(body);
     res.status(201).json(newContact);
