@@ -1,8 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
-const registrationSchema = require("../schemas/userSchemas");
-const loginSchema = require("../schemas/userSchemas");
+const { registrationSchema, loginSchema } = require("../schemas/userSchemas");
 
 const generateToken = (userId) => {
   return jwt.sign({ userId }, "your-secret-key", {
@@ -98,7 +97,7 @@ const getCurrentUser = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token.replace("Bearer ", ""), "your-secret-key"); // Замість "your-secret-key" використовуйте свій секретний ключ
+    const decoded = jwt.verify(token.replace("Bearer ", ""), "your-secret-key");
 
     const userId = decoded.userId;
 
