@@ -19,6 +19,10 @@ const contactSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
 });
 
 contactSchema.post("save", function (error, doc, next) {
@@ -29,6 +33,6 @@ contactSchema.post("save", function (error, doc, next) {
   }
 });
 
-const Contact = mongoose.model("contact", contactSchema);
+const Contact = mongoose.model("Contact", contactSchema);
 
 module.exports = Contact;

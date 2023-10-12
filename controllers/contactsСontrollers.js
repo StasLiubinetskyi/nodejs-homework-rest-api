@@ -7,7 +7,19 @@ const {
 
 exports.listContacts = async (req, res, next) => {
   try {
-    const contacts = await Contact.find();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const favorite = req.query.favorite === "true" || false;
+
+    const skip = (page - 1) * limit;
+
+    const query = { owner: req.user._id };
+    if (favorite) {
+      query.favorite = true;
+    }
+
+    const contacts = await Contact.find(query).skip(skip).limit(limit).exec();
+
     res.status(200).json(contacts);
   } catch (error) {
     next(error);
