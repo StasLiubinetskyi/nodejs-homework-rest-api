@@ -72,6 +72,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     const user = await handleLogin(email, password);
 
     const token = generateToken(user._id);
@@ -89,7 +90,7 @@ exports.login = async (req, res) => {
   }
 };
 
-const getCurrentUser = async (req, res) => {
+exports.getCurrentUser = async (req, res) => {
   const token = req.headers.authorization;
 
   if (!token) {
@@ -132,5 +133,3 @@ exports.updateSubscription = async (req, res, next) => {
     next(error);
   }
 };
-
-module.exports = getCurrentUser;

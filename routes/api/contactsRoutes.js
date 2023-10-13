@@ -9,12 +9,15 @@ const {
   updateFavoriteStatus,
 } = require("../../controllers/contactsСontrollers");
 const verifyToken = require("../../middlewares/authenticate");
+const { validateContactBody } = require("../../middlewares/validateBody");
 
-router.get("/", verifyToken, listContacts);
-router.get("/:id", verifyToken, getContactById);
-router.post("/", verifyToken, addContact);
-router.put("/:id", verifyToken, updateContact);
-router.delete("/:id", verifyToken, removeContact);
-router.patch("/:id/favorite", verifyToken, updateFavoriteStatus);
+router.use(verifyToken);
+
+router.get("/", listContacts);
+router.get("/:id", getContactById);
+router.post("/", validateContactBody, addContact);
+router.put("/:id", validateContactBody, updateContact);
+router.delete("/:id", removeContact);
+router.patch("/:id/favorite", updateFavoriteStatus);
 
 module.exports = router;
