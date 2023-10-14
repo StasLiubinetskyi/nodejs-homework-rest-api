@@ -9,8 +9,7 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, "your-secret-key");
-
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
     const userId = decoded.userId;
 
     User.findById(userId, (err, user) => {
@@ -19,7 +18,6 @@ const verifyToken = (req, res, next) => {
       }
 
       req.user = user;
-
       next();
     });
   } catch (error) {
