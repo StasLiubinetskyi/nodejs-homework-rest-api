@@ -27,9 +27,12 @@ exports.register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({ email, password: hashedPassword });
+    const token = generateToken(user._id);
+    user.token = token;
     await user.save();
 
     return res.status(201).json({
+      token,
       user: {
         email: user.email,
         subscription: user.subscription,
@@ -63,6 +66,8 @@ exports.login = async (req, res) => {
     }
 
     const token = generateToken(user._id);
+    user.token = token;
+    await user.save();
 
     return res.status(200).json({
       token,
