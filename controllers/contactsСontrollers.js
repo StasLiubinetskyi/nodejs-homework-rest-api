@@ -9,7 +9,8 @@ exports.listContacts = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const favorite = req.query.favorite === "true" || false;
+
+    const favorite = req.query.favorite === "true" || false; // Додаємо фільтр за полем favorite
 
     const skip = (page - 1) * limit;
 
@@ -25,6 +26,7 @@ exports.listContacts = async (req, res, next) => {
     next(error);
   }
 };
+
 
 exports.getContactById = async (req, res, next) => {
   const { id } = req.params;

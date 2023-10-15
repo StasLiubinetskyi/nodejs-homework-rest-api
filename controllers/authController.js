@@ -114,13 +114,8 @@ exports.updateSubscription = async (req, res) => {
     return res.status(400).json({ message: "Invalid subscription type" });
   }
 
-  try {
-    req.user.subscription = subscription;
-    await req.user.save();
+  req.user.subscription = subscription;
+  await req.user.save();
 
-    return res.status(200).json({ subscription: req.user.subscription });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error" });
-  }
+  return res.status(200).json({ subscription: req.user.subscription });
 };
