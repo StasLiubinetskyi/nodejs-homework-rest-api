@@ -49,6 +49,16 @@ exports.getContactById = async (req, res, next) => {
 
 exports.addContact = async (req, res, next) => {
   const { body } = req;
+  const existingContact = await Contact.findOne({
+    $or: [{ email: body.email }, { phone: body.phone }],
+  });
+
+  if (existingContact) {
+    return res
+      .status(400)
+      .json({ message: "A contact with this information already exists" });
+  }
+
   const requiredFields = ["name", "email", "phone"];
   const errorMessages = {
     name: "missing required 'name' field",
@@ -68,7 +78,7 @@ exports.addContact = async (req, res, next) => {
   }
 
   try {
-    const newContact = await Contact.create(body);
+    const newContact = await Contact.create({ ...body, owner: req.user._id });
     res.status(201).json(newContact);
   } catch (error) {
     next(error);
