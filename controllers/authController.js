@@ -4,7 +4,7 @@ const User = require("../models/userModel");
 const { registrationSchema, loginSchema } = require("../schemas/userSchemas");
 
 const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.SECRET_KEY, {
+  return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
     expiresIn: "1h",
   });
 };
@@ -78,32 +78,14 @@ exports.login = async (req, res) => {
 };
 
 exports.getCurrentUser = async (req, res) => {
-  const token = req.headers.authorization;
-
-  if (!token) {
+  if (!req.user) {
     return res.status(401).json({ message: "Not authorized" });
   }
-
-  try {
-    const decoded = jwt.verify(
-      token.replace("Bearer ", ""),
-      process.env.SECRET_KEY
-    );
-    const userId = decoded.userId;
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-
-    return res.status(200).json({
-      email: user.email,
-      subscription: user.subscription,
-    });
-  } catch (error) {
-    return res.status(401).json({ message: "Not authorized" });
-  }
+  const { email, subscription } = req.user;
+  res.status(200).json({
+    email,
+    subscription,
+  });
 };
 
 exports.logout = async (req, res) => {
