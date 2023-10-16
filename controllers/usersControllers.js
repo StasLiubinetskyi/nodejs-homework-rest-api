@@ -1,7 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
-const { registrationSchema, loginSchema } = require("../schemas/userSchemas");
+const { registrationSchema, loginSchema } = require("../schemas/usersSchemas");
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
@@ -40,7 +40,6 @@ exports.register = async (req, res) => {
     return res.status(400).json({ message: error.message });
   }
 };
-
 
 exports.login = async (req, res) => {
   try {
