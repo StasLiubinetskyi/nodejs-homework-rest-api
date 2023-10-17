@@ -7,12 +7,26 @@ const {
 
 exports.listContacts = async (req, res, next) => {
   try {
-    const contacts = await Contact.find();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const favorite = req.query.favorite === "true" || false; // Додаємо фільтр за полем favorite
+
+    const skip = (page - 1) * limit;
+
+    const query = { owner: req.user._id };
+    if (favorite) {
+      query.favorite = true;
+    }
+
+    const contacts = await Contact.find(query).skip(skip).limit(limit).exec();
+
     res.status(200).json(contacts);
   } catch (error) {
     next(error);
   }
 };
+
 
 exports.getContactById = async (req, res, next) => {
   const { id } = req.params;
@@ -37,6 +51,16 @@ exports.getContactById = async (req, res, next) => {
 
 exports.addContact = async (req, res, next) => {
   const { body } = req;
+  const existingContact = await Contact.findOne({
+    $or: [{ email: body.email }, { phone: body.phone }],
+  });
+
+  if (existingContact) {
+    return res
+      .status(400)
+      .json({ message: "A contact with this information already exists" });
+  }
+
   const requiredFields = ["name", "email", "phone"];
   const errorMessages = {
     name: "missing required 'name' field",
@@ -49,14 +73,14 @@ exports.addContact = async (req, res, next) => {
     return res.status(400).json({ message: errorMessages[missingFields[0]] });
   }
 
-  const { error } = updateFavoriteSchema.validate({ favorite: body.favorite });
+  const { error } = contactSchema.validate(body);
 
   if (error) {
-    return res.status(400).json({ message: "Invalid 'favorite' field type" });
+    return res.status(400).json({ message: error.details[0].message });
   }
 
   try {
-    const newContact = await Contact.create(body);
+    const newContact = await Contact.create({ ...body, owner: req.user._id });
     res.status(201).json(newContact);
   } catch (error) {
     next(error);
