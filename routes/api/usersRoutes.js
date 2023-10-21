@@ -6,7 +6,7 @@ const {
   updateSubscription,
   getCurrentUser,
   logout,
-} = require("../../controllers/UsersControllers");
+} = require("../../controllers/usersControllers");
 const verifyToken = require("../../middlewares/authenticate");
 
 router.post("/register", register);
