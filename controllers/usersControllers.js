@@ -7,7 +7,7 @@ const {
   saveAvatarToTmp,
   processAvatar,
   moveAvatarToPublic,
-} = require("../middlewares/avatar");
+} = require("../middlewares/upload");
 
 const fs = require("fs").promises;
 
@@ -36,7 +36,8 @@ exports.register = async (req, res) => {
 
     const avatarURL = gravatar.url(email, { s: "250", r: "x", d: "retro" });
 
-    const user = new User({ email, password: hashedPassword, avatarURL });
+    const user = new User({ email, password: hashedPassword, avatarURL }); // Додайте avatarURL
+
     await user.save();
 
     return res.status(201).json({
