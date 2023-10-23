@@ -6,9 +6,10 @@ const {
   updateSubscription,
   getCurrentUser,
   logout,
+  uploadAvatar,
 } = require("../../controllers/usersControllers");
 const verifyToken = require("../../middlewares/authenticate");
-const { uploadAvatar } = require("../../middlewares/upload");
+const multer = require("multer");
 
 router.post("/register", register);
 router.post("/login", login);
@@ -16,6 +17,7 @@ router.get("/current", verifyToken, getCurrentUser);
 router.patch("/subscription", verifyToken, updateSubscription);
 router.post("/logout", verifyToken, logout);
 
-router.post("/avatar", verifyToken, uploadAvatar, uploadAvatar);
+const upload = multer({ dest: "tmp" });
+router.patch("/avatars", verifyToken, upload.single("avatar"), uploadAvatar);
 
 module.exports = router;

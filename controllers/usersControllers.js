@@ -3,13 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const { registrationSchema, loginSchema } = require("../schemas/usersSchemas");
 const gravatar = require("gravatar");
-const {
-  saveAvatarToTmp,
-  processAvatar,
-  moveAvatarToPublic,
-} = require("../middlewares/upload");
-
-const fs = require("fs").promises;
+const { moveAvatar } = require("../middlewares/upload");
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
@@ -36,7 +30,7 @@ exports.register = async (req, res) => {
 
     const avatarURL = gravatar.url(email, { s: "250", r: "x", d: "retro" });
 
-    const user = new User({ email, password: hashedPassword, avatarURL }); // Додайте avatarURL
+    const user = new User({ email, password: hashedPassword, avatarURL });
 
     await user.save();
 
@@ -65,7 +59,7 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      throw new Error("Email or password is wrong");
+      throw Error("Email or password is wrong");
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -92,10 +86,11 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.getCurrentUser = async (req, res) => {
+exports.getCurrentUser = (req, res) => {
   if (!req.user) {
     return res.status(401).json({ message: "Not authorized" });
   }
+
   const { email, subscription, avatarURL } = req.user;
   res.status(200).json({
     email,
@@ -108,9 +103,11 @@ exports.logout = async (req, res) => {
   try {
     const userId = req.user._id;
     const user = await User.findById(userId);
+
     if (!user) {
       return res.status(401).json({ message: "Not authorized" });
     }
+
     user.token = undefined;
     await user.save();
     return res.status(204).send();
@@ -142,10 +139,7 @@ exports.uploadAvatar = async (req, res) => {
     const avatarPath = req.file.path;
     const user = req.user;
 
-    const tempAvatarPath = await saveAvatarToTmp(avatarPath);
-    const processedAvatar = await processAvatar(tempAvatarPath);
-    const newAvatarPath = await moveAvatarToPublic(user._id, processedAvatar);
-    fs.unlink(tempAvatarPath);
+    const newAvatarPath = await moveAvatar(user._id, avatarPath);
 
     user.avatarURL = newAvatarPath;
     await user.save();
