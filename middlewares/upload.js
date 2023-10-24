@@ -16,12 +16,13 @@ const saveAvatar = async (avatarPath) => {
 
 const processAvatar = async (tempAvatarPath) => {
   const image = await Jimp.read(tempAvatarPath);
-  image.cover(250, 250).write(tempAvatarPath);
+  image.resize(250, 250).write(tempAvatarPath);
 };
 
 const moveAvatar = async (userId, avatarPath) => {
   const avatarName = `${userId}-${Date.now()}.png`;
   const newAvatarPath = path.join(AVATARS_PUBLIC_DIR, avatarName);
+  await processAvatar(avatarPath);
   await fs.rename(avatarPath, newAvatarPath);
   return `/avatars/${avatarName}`;
 };
