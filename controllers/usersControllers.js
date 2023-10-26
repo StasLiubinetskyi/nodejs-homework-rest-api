@@ -2,6 +2,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const { registrationSchema, loginSchema } = require("../schemas/usersSchemas");
+const gravatar = require("gravatar");
+const { moveAvatar } = require("../middlewares/upload");
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
@@ -26,13 +28,17 @@ exports.register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({ email, password: hashedPassword });
+    const avatarURL = gravatar.url(email, { s: "250", r: "x", d: "retro" });
+
+    const user = new User({ email, password: hashedPassword, avatarURL });
+
     await user.save();
 
     return res.status(201).json({
       user: {
         email: user.email,
         subscription: user.subscription,
+        avatarURL: user.avatarURL,
       },
     });
   } catch (error) {
@@ -53,7 +59,7 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      throw new Error("Email or password is wrong");
+      throw Error("Email or password is wrong");
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -71,6 +77,7 @@ exports.login = async (req, res) => {
       user: {
         email: user.email,
         subscription: user.subscription,
+        avatarURL: user.avatarURL,
       },
     });
   } catch (error) {
@@ -79,14 +86,16 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.getCurrentUser = async (req, res) => {
+exports.getCurrentUser = (req, res) => {
   if (!req.user) {
     return res.status(401).json({ message: "Not authorized" });
   }
-  const { email, subscription } = req.user;
+
+  const { email, subscription, avatarURL } = req.user;
   res.status(200).json({
     email,
     subscription,
+    avatarURL,
   });
 };
 
@@ -94,9 +103,11 @@ exports.logout = async (req, res) => {
   try {
     const userId = req.user._id;
     const user = await User.findById(userId);
+
     if (!user) {
       return res.status(401).json({ message: "Not authorized" });
     }
+
     user.token = undefined;
     await user.save();
     return res.status(204).send();
@@ -117,4 +128,25 @@ exports.updateSubscription = async (req, res) => {
   await req.user.save();
 
   return res.status(200).json({ subscription: req.user.subscription });
+};
+
+exports.uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const avatarPath = req.file.path;
+    const user = req.user;
+
+    const newAvatarPath = await moveAvatar(user._id, avatarPath);
+
+    user.avatarURL = newAvatarPath;
+    await user.save();
+
+    return res.status(200).json({ avatarURL: newAvatarPath });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
