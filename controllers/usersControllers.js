@@ -4,6 +4,12 @@ const User = require("../models/userModel");
 const { registrationSchema, loginSchema } = require("../schemas/usersSchemas");
 const gravatar = require("gravatar");
 const { moveAvatar } = require("../middlewares/upload");
+const { v4: uuidv4 } = require("uuid");
+const elasticemail = require("elasticemail");
+
+const client = elasticemail.createClient({
+  apiKey: process.env.ELASTICEMAIL_API_KEY,
+});
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
@@ -11,79 +17,105 @@ const generateToken = (userId) => {
   });
 };
 
-exports.register = async (req, res) => {
+const sendEmail = async (message) => {
   try {
-    const { email, password } = req.body;
-    const { error } = registrationSchema.validate({ email, password });
-
-    if (error) {
-      throw new Error(error.details[0].message);
-    }
-
-    const existingUser = await User.findOne({ email });
-
-    if (existingUser) {
-      throw new Error("Email in use");
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const avatarURL = gravatar.url(email, { s: "250", r: "x", d: "retro" });
-
-    const user = new User({ email, password: hashedPassword, avatarURL });
-
-    await user.save();
-
-    return res.status(201).json({
-      user: {
-        email: user.email,
-        subscription: user.subscription,
-        avatarURL: user.avatarURL,
-      },
+    await client.mailer.send(message, (error, result) => {
+      if (error) {
+        console.error(error);
+        throw new Error("Failed to send email: " + error.message);
+      }
+      if (result) {
+        return true;
+      }
     });
   } catch (error) {
-    console.error(error);
-    return res.status(400).json({ message: error.message });
+    throw new Error("Failed to send email: " + error.message);
   }
 };
 
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const { error } = loginSchema.validate({ email, password });
+exports.register = async (req, res) => {
+  const { email, password } = req.body;
+  const { error } = registrationSchema.validate({ email, password });
 
-    if (error) {
-      throw new Error(error.details[0].message);
-    }
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      throw Error("Email or password is wrong");
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-
-    if (!passwordMatch) {
-      throw new Error("Email or password is wrong");
-    }
-
-    const token = generateToken(user._id);
-    user.token = token;
-    await user.save();
-
-    return res.status(200).json({
-      token,
-      user: {
-        email: user.email,
-        subscription: user.subscription,
-        avatarURL: user.avatarURL,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(401).json({ message: error.message });
+  if (error) {
+    throw new Error(error.details[0].message);
   }
+
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser) {
+    throw new Error("Email in use");
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const avatarURL = gravatar.url(email, { s: "250", r: "x", d: "retro" });
+
+  const verificationToken = uuidv4();
+
+  const verificationLink = `${process.env.HOST}/verify/${verificationToken}`;
+
+  const message = {
+    subject: "Email Verification",
+    from: process.env.EMAIL_SENDER,
+    bodyText: `Please click the following link to verify your email: ${verificationLink}`,
+    to: email,
+  };
+
+  await sendEmail(message);
+
+  const user = new User({
+    email,
+    password: hashedPassword,
+    avatarURL,
+    verificationToken,
+  });
+
+  await user.save();
+
+  return res.status(201).json({
+    user: {
+      email: user.email,
+      subscription: user.subscription,
+      avatarURL: user.avatarURL,
+    },
+  });
+};
+
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+  const { error } = loginSchema.validate({ email, password });
+
+  if (error) {
+    throw new Error(error.details[0].message);
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new Error("Email or password is wrong");
+  }
+
+  const passwordMatch = await bcrypt.compare(password, user.password);
+
+  if (!passwordMatch) {
+    throw new Error("Email or password is wrong");
+  }
+
+  if (!user.verify) {
+    throw new Error("Email is not verified");
+  }
+
+  const token = generateToken(user._id);
+
+  return res.status(200).json({
+    token,
+    user: {
+      email: user.email,
+      subscription: user.subscription,
+      avatarURL: user.avatarURL,
+    },
+  });
 };
 
 exports.getCurrentUser = (req, res) => {
@@ -100,21 +132,16 @@ exports.getCurrentUser = (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const user = await User.findById(userId);
+  const userId = req.user._id;
+  const user = await User.findById(userId);
 
-    if (!user) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-
-    user.token = undefined;
-    await user.save();
-    return res.status(204).send();
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error" });
+  if (!user) {
+    return res.status(401).json({ message: "Not authorized" });
   }
+
+  user.token = undefined;
+  await user.save();
+  return res.status(204).send();
 };
 
 exports.updateSubscription = async (req, res) => {
@@ -131,22 +158,51 @@ exports.updateSubscription = async (req, res) => {
 };
 
 exports.uploadAvatar = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-
-    const avatarPath = req.file.path;
-    const user = req.user;
-
-    const newAvatarPath = await moveAvatar(user._id, avatarPath);
-
-    user.avatarURL = newAvatarPath;
-    await user.save();
-
-    return res.status(200).json({ avatarURL: newAvatarPath });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error" });
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
   }
+
+  const avatarPath = req.file.path;
+  const user = req.user;
+
+  const newAvatarPath = await moveAvatar(user._id, avatarPath);
+
+  user.avatarURL = newAvatarPath;
+  await user.save();
+
+  return res.status(200).json({ avatarURL: newAvatarPath });
+};
+
+exports.resendVerificationEmail = async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  if (user.verify) {
+    return res
+      .status(400)
+      .json({ message: "Verification has already been passed" });
+  }
+
+  const verificationToken = uuidv4();
+
+  const verificationLink = `${process.env.HOST}/verify/${verificationToken}`;
+
+  const message = {
+    subject: "Email Verification",
+    from: process.env.EMAIL_SENDER,
+    bodyText: `Please click the following link to verify your email: ${verificationLink}`,
+    to: user.email,
+  };
+
+  await sendEmail(message);
+
+  user.verificationToken = verificationToken;
+  await user.save();
+
+  return res.status(200).json({ message: "Verification email sent" });
 };
