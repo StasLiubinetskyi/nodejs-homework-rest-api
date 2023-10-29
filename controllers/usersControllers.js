@@ -5,11 +5,7 @@ const { registrationSchema, loginSchema } = require("../schemas/usersSchemas");
 const gravatar = require("gravatar");
 const { moveAvatar } = require("../middlewares/upload");
 const { v4: uuidv4 } = require("uuid");
-const elasticemail = require("elasticemail");
-
-const client = elasticemail.createClient({
-  apiKey: process.env.ELASTICEMAIL_API_KEY,
-});
+const sendEmail = require("../middlewares/sendEmail");
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
@@ -17,34 +13,18 @@ const generateToken = (userId) => {
   });
 };
 
-const sendEmail = async (message) => {
-  try {
-    await client.mailer.send(message, (error, result) => {
-      if (error) {
-        console.error(error);
-        throw new Error("Failed to send email: " + error.message);
-      }
-      if (result) {
-        return true;
-      }
-    });
-  } catch (error) {
-    throw new Error("Failed to send email: " + error.message);
-  }
-};
-
 exports.register = async (req, res) => {
   const { email, password } = req.body;
   const { error } = registrationSchema.validate({ email, password });
 
   if (error) {
-    throw new Error(error.details[0].message);
+    return res.status(400).json({ message: error.details[0].message });
   }
 
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    throw new Error("Email in use");
+    return res.status(400).json({ message: "Email in use" });
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -57,7 +37,7 @@ exports.register = async (req, res) => {
 
   const message = {
     subject: "Email Verification",
-    from: process.env.EMAIL_SENDER,
+    from: process.env.UKR_NET_EMAIL,
     bodyText: `Please click the following link to verify your email: ${verificationLink}`,
     to: email,
   };
@@ -87,23 +67,23 @@ exports.login = async (req, res) => {
   const { error } = loginSchema.validate({ email, password });
 
   if (error) {
-    throw new Error(error.details[0].message);
+    return res.status(400).json({ message: error.details[0].message });
   }
 
   const user = await User.findOne({ email });
 
   if (!user) {
-    throw new Error("Email or password is wrong");
+    return res.status(400).json({ message: "Email or password is wrong" });
   }
 
   const passwordMatch = await bcrypt.compare(password, user.password);
 
   if (!passwordMatch) {
-    throw new Error("Email or password is wrong");
+    return res.status(400).json({ message: "Email or password is wrong" });
   }
 
   if (!user.verify) {
-    throw new Error("Email is not verified");
+    return res.status(400).json({ message: "Email is not verified" });
   }
 
   const token = generateToken(user._id);
@@ -194,7 +174,7 @@ exports.resendVerificationEmail = async (req, res) => {
 
   const message = {
     subject: "Email Verification",
-    from: process.env.EMAIL_SENDER,
+    from: process.env.UKR_NET_EMAIL,
     bodyText: `Please click the following link to verify your email: ${verificationLink}`,
     to: user.email,
   };
