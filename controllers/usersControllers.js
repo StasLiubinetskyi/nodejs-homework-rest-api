@@ -6,6 +6,9 @@ const gravatar = require("gravatar");
 const { moveAvatar } = require("../middlewares/upload");
 const { v4: uuidv4 } = require("uuid");
 const sendEmail = require("../middlewares/sendEmail");
+require("dotenv").config();
+
+const { BASE_URL } = process.env;
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
@@ -33,12 +36,12 @@ exports.register = async (req, res) => {
 
   const verificationToken = uuidv4();
 
-  const verificationLink = `${process.env.HOST}/verify/${verificationToken}`;
+  const verificationLink = `${BASE_URL}/api/users/verify/${verificationToken}`;
 
   const message = {
     subject: "Email Verification",
     from: process.env.UKR_NET_EMAIL,
-    bodyText: `Please click the following link to verify your email: ${verificationLink}`,
+    html: `Please click the following link to verify your email: <a href="${verificationLink}">Click Here</a>`,
     to: email,
   };
 
@@ -170,12 +173,12 @@ exports.resendVerificationEmail = async (req, res) => {
 
   const verificationToken = uuidv4();
 
-  const verificationLink = `${process.env.HOST}/verify/${verificationToken}`;
+  const verificationLink = `${BASE_URL}/api/users/verify/${verificationToken}`;
 
   const message = {
     subject: "Email Verification",
     from: process.env.UKR_NET_EMAIL,
-    bodyText: `Please click the following link to verify your email: ${verificationLink}`,
+    bodyHTML: `Please click the following link to verify your email: <a href="${verificationLink}">Click Here</a>`,
     to: user.email,
   };
 
