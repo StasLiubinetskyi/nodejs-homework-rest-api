@@ -7,8 +7,10 @@ const {
   getCurrentUser,
   logout,
   uploadAvatar,
+  resendVerificationEmail,
 } = require("../../controllers/usersControllers");
 const verifyToken = require("../../middlewares/authenticate");
+const verifyEmailMiddleware = require("../../middlewares/verifyEmailMiddleware");
 const multer = require("multer");
 
 router.post("/register", register);
@@ -19,5 +21,8 @@ router.post("/logout", verifyToken, logout);
 
 const upload = multer({ dest: "tmp" });
 router.patch("/avatars", verifyToken, upload.single("avatar"), uploadAvatar);
+router.post("/verify", resendVerificationEmail);
+
+router.get("/verify/:verificationToken", verifyEmailMiddleware);
 
 module.exports = router;
